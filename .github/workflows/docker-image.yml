@@ -79,6 +79,37 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha
 
+      - name: Build smoke test image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: local/claudecodeui:test
+          build-args: |
+            CLAUDECODEUI_REPO=${{ env.UPSTREAM_REPO }}
+            CLAUDECODEUI_REF=${{ steps.upstream.outputs.ref }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run smoke test
+        run: |
+          set -e
+          cleanup() {
+            docker rm -f claudecodeui-smoke >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run -d --name claudecodeui-smoke -e HOST=0.0.0.0 -e SERVER_PORT=3001 -p 3001:3001 local/claudecodeui:test
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs claudecodeui-smoke
+          exit 1
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
