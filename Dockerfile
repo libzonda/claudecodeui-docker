@@ -4,24 +4,16 @@ ARG NODE_VERSION=22
 ARG CLAUDECODEUI_REPO=https://github.com/siteboon/claudecodeui.git
 ARG CLAUDECODEUI_REF=main
 
-FROM node:${NODE_VERSION}-bookworm AS source
+FROM node:${NODE_VERSION}-bookworm AS build
 ARG CLAUDECODEUI_REPO
 ARG CLAUDECODEUI_REF
-WORKDIR /src
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-RUN git clone --depth 1 --branch "${CLAUDECODEUI_REF}" "${CLAUDECODEUI_REPO}" app
-
-FROM node:${NODE_VERSION}-bookworm AS build
 WORKDIR /app
 ENV HUSKY=0
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ pkg-config \
+    && apt-get install -y --no-install-recommends git ca-certificates python3 make g++ pkg-config \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=source /src/app/package*.json ./
-RUN npm ci
-COPY --from=source /src/app/ ./
+RUN git clone --depth 1 --branch "${CLAUDECODEUI_REF}" "${CLAUDECODEUI_REPO}" .
+RUN npm install
 RUN npm run build && npm prune --omit=dev
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
