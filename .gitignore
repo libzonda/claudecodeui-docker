@@ -1,0 +1,32 @@
+# Local temp clone used for upstream inspection
+.upstream-src/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node / package manager
+node_modules/
+.npm/
+.pnpm-store/
+
+# Build / cache
+.dist/
+dist/
+build/
+.cache/
+coverage/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

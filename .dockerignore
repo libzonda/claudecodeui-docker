@@ -1,0 +1,12 @@
+.git
+.github
+.vscode
+.idea
+node_modules
+.upstream-src
+Dockerfile*
+README*
+*.log
+.env
+.env.*
+!.env.example
