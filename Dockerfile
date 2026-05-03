@@ -18,7 +18,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ pkg-config \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=source /app/ ./
-RUN npm ci --omit=optional
+RUN npm ci
 RUN npm run build
 
 FROM node:${NODE_VERSION}-bookworm AS prod-deps
