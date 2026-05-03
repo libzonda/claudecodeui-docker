@@ -171,6 +171,25 @@ jobs:
           cache-from: type=gha,scope=release
           cache-to: type=gha,mode=max,scope=release
 
+      - name: Verify Docker Hub tags
+        if: steps.release_check.outputs.exists != 'true' && steps.image.outputs.dockerhub_enabled == 'true'
+        run: |
+          set -e
+          for tag in "${{ steps.upstream.outputs.tag }}" latest; do
+            found=false
+            for i in $(seq 1 12); do
+              if curl -fsS "https://hub.docker.com/v2/repositories/${{ steps.image.outputs.dockerhub }}/tags/${tag}" >/dev/null; then
+                found=true
+                break
+              fi
+              sleep 10
+            done
+            if [ "$found" != true ]; then
+              echo "Docker Hub tag not visible after push: $tag"
+              exit 1
+            fi
+          done
+
       - name: Update Docker Hub README
         if: github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
         uses: peter-evans/dockerhub-description@v4
