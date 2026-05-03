@@ -1,29 +1,48 @@
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 ARG CLAUDECODEUI_SOURCE_URL=https://github.com/siteboon/claudecodeui/archive/refs/heads/main.tar.gz
 
-FROM node:${NODE_VERSION}-bookworm AS build
+FROM node:${NODE_VERSION}-bookworm AS source
 ARG CLAUDECODEUI_SOURCE_URL
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL "$CLAUDECODEUI_SOURCE_URL" | tar -xz --strip-components=1 -C /app
+
+FROM node:${NODE_VERSION}-bookworm AS build
 WORKDIR /app
 ENV HUSKY=0
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates python3 make g++ pkg-config tar \
+    && apt-get install -y --no-install-recommends python3 make g++ pkg-config \
     && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL "$CLAUDECODEUI_SOURCE_URL" | tar -xz --strip-components=1 -C /app
-RUN npm install
-RUN npm run build && npm prune --omit=dev
+COPY --from=source /app/ ./
+RUN npm ci --omit=optional
+RUN npm run build
+
+FROM node:${NODE_VERSION}-bookworm AS prod-deps
+WORKDIR /app
+ENV HUSKY=0
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=source /app/ ./
+RUN npm ci --omit=dev --omit=optional
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    SERVER_PORT=3001
+    SERVER_PORT=3001 \
+    npm_config_update_notifier=false \
+    npm_config_fund=false \
+    npm_config_audit=false
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash git ca-certificates openssh-client \
+    && apt-get install -y --no-install-recommends ca-certificates openssh-client \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=prod-deps /app/package*.json ./
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/dist-server ./dist-server
 COPY --from=build /app/public ./public
