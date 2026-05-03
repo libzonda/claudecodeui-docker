@@ -66,7 +66,7 @@ install_codex() {
     log "codex already installed, skipping"
     return
   fi
-  log "installing codex: $package_spec"
+  log "installing codex via npm: $package_spec"
   npm install -g "$package_spec"
   mark_done codex "$CODEX_VERSION"
 }
@@ -77,7 +77,7 @@ install_gemini() {
     log "gemini already installed, skipping"
     return
   fi
-  log "installing gemini: $package_spec"
+  log "installing gemini via npm: $package_spec"
   npm install -g "$package_spec"
   mark_done gemini "$GEMINI_VERSION"
 }
@@ -88,13 +88,24 @@ install_claude() {
     return
   fi
 
-  if [ "$CLAUDE_VERSION" = "latest" ]; then
-    log "installing claude via official installer"
-    curl -fsSL https://claude.ai/install.sh | bash
-  else
-    log "installing claude version/channel: $CLAUDE_VERSION"
-    curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_VERSION"
+  if ! command -v apt-get >/dev/null 2>&1; then
+    log "apt-get is required to install claude-code"
+    exit 1
   fi
+
+  log "installing claude-code via native package manager"
+  apt-get update
+  apt-get install -y --no-install-recommends curl ca-certificates gnupg
+  install -d -m 0755 /etc/apt/keyrings
+  curl -fsSL https://cli.claude.com/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/claude-code.gpg
+  printf 'deb [signed-by=/etc/apt/keyrings/claude-code.gpg] https://cli.claude.com/apt stable main\n' > /etc/apt/sources.list.d/claude-code.list
+  apt-get update
+  if [ "$CLAUDE_VERSION" = "latest" ]; then
+    apt-get install -y --no-install-recommends claude-code
+  else
+    apt-get install -y --no-install-recommends "claude-code=$CLAUDE_VERSION"
+  fi
+  rm -rf /var/lib/apt/lists/*
   mark_done claude "$CLAUDE_VERSION"
 }
 
@@ -108,7 +119,7 @@ install_cursor() {
     log "warning: Cursor version pinning is not implemented; installing latest"
   fi
 
-  log "installing cursor via official installer"
+  log "installing Cursor via official installer"
   curl -fsSL https://cursor.com/install | bash
 
   if command -v agent >/dev/null 2>&1 && ! command -v cursor-agent >/dev/null 2>&1; then

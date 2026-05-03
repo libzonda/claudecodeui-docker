@@ -18,7 +18,7 @@ Important runtime variables:
 - `DATABASE_PATH` — auth database path inside container, default `/root/.cloudcli/auth.db`
 - `INSTALL_CLAUDE=true` — install Claude Code CLI at container startup
 - `INSTALL_CODEX=true` — install OpenAI Codex CLI at container startup
-- `INSTALL_CURSOR=true` — install Cursor CLI at container startup
+- `INSTALL_CURSOR=true` — install Cursor CLI at container startup using the official installer
 - `INSTALL_GEMINI=true` — install Gemini CLI at container startup
 - `AUTO_UPDATE_CLI=true` — force reinstall/update enabled CLIs on every startup
 

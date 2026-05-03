@@ -31,7 +31,7 @@
 
 - `INSTALL_CLAUDE=true`：容器启动时安装 Claude Code CLI
 - `INSTALL_CODEX=true`：容器启动时安装 OpenAI Codex CLI
-- `INSTALL_CURSOR=true`：容器启动时安装 Cursor CLI
+- `INSTALL_CURSOR=true`：容器启动时使用官方安装方式安装 Cursor CLI
 - `INSTALL_GEMINI=true`：容器启动时安装 Gemini CLI
 - `AUTO_UPDATE_CLI=true`：每次启动都强制更新已启用的 CLI
 - `CLAUDE_VERSION`：Claude 版本或 channel，默认 `latest`
