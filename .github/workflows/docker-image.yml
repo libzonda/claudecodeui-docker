@@ -178,7 +178,7 @@ jobs:
           for tag in "${{ steps.upstream.outputs.tag }}" latest; do
             found=false
             for i in $(seq 1 12); do
-              if curl -fsS "https://hub.docker.com/v2/repositories/${{ steps.image.outputs.dockerhub }}/tags/${tag}" >/dev/null; then
+              if docker buildx imagetools inspect "docker.io/${{ steps.image.outputs.dockerhub }}:${tag}" >/dev/null 2>&1; then
                 found=true
                 break
               fi
