@@ -1,5 +1,7 @@
 # claudecodeui-docker
 
+[English](README.md) | 简体中文
+
 这是一个为 [`siteboon/claudecodeui`](https://github.com/siteboon/claudecodeui) 构建 Docker 镜像的包装仓库。
 
 它会基于上游最新 release 的源码包构建镜像，执行一次 smoke test，然后发布带版本号和 `latest` 的镜像。

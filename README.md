@@ -1,5 +1,7 @@
 # claudecodeui-docker
 
+English | [简体中文](README_zh-CN.md)
+
 Docker image packaging for [`siteboon/claudecodeui`](https://github.com/siteboon/claudecodeui).
 
 This repository builds from the latest upstream release source tarball, runs a smoke test, then publishes versioned tags plus `latest`.
