@@ -27,17 +27,34 @@
 - `HOST`：监听地址，默认 `0.0.0.0`
 - `DATABASE_PATH`：容器内认证数据库路径，默认 `/root/.cloudcli/auth.db`
 
+可选的 provider CLI 自举变量：
+
+- `INSTALL_CLAUDE=true`：容器启动时安装 Claude Code CLI
+- `INSTALL_CODEX=true`：容器启动时安装 OpenAI Codex CLI
+- `INSTALL_CURSOR=true`：容器启动时安装 Cursor CLI
+- `INSTALL_GEMINI=true`：容器启动时安装 Gemini CLI
+- `AUTO_UPDATE_CLI=true`：每次启动都强制更新已启用的 CLI
+- `CLAUDE_VERSION`：Claude 版本或 channel，默认 `latest`
+- `CODEX_VERSION`：Codex npm 版本，默认 `latest`
+- `CURSOR_VERSION`：为 Cursor 预留，当前仍安装最新版本
+- `GEMINI_VERSION`：Gemini npm 版本，默认 `latest`
+- `BOOTSTRAP_STATE_DIR`：安装状态目录，默认 `/var/lib/claudecodeui-bootstrap`
+
 ## 目录挂载
 
-建议重点持久化这两个目录：
+建议重点持久化这些目录：
 
 - `/root/.cloudcli`：保存 `auth.db`
 - `/root/.claude`：保存 Claude Code 的会话、配置、凭据、MCP 配置
+- `/root/.codex`：保存 Codex 认证与会话数据
+- `/root/.gemini`：保存 Gemini 认证与配置
 
 推荐挂载：
 
 - `-v claudecodeui-cloudcli:/root/.cloudcli`
 - `-v claudecodeui-claude:/root/.claude`
+- `-v claudecodeui-codex:/root/.codex`
+- `-v claudecodeui-gemini:/root/.gemini`
 
 如果希望在 UI 中访问你的项目目录，也建议挂载工作区：
 
@@ -54,8 +71,11 @@ docker run -d \
   -e HOST=0.0.0.0 \
   -e SERVER_PORT=3001 \
   -e DATABASE_PATH=/root/.cloudcli/auth.db \
+  -e INSTALL_CLAUDE=true \
+  -e INSTALL_CODEX=true \
   -v claudecodeui-cloudcli:/root/.cloudcli \
   -v claudecodeui-claude:/root/.claude \
+  -v claudecodeui-codex:/root/.codex \
   -v /path/to/your/project:/workspace/project \
   docker.io/libzonda/claudecodeui-docker:latest
 ```
@@ -69,8 +89,11 @@ docker run -d \
   -e HOST=0.0.0.0 \
   -e SERVER_PORT=3001 \
   -e DATABASE_PATH=/root/.cloudcli/auth.db \
+  -e INSTALL_CLAUDE=true \
+  -e INSTALL_GEMINI=true \
   -v claudecodeui-cloudcli:/root/.cloudcli \
   -v claudecodeui-claude:/root/.claude \
+  -v claudecodeui-gemini:/root/.gemini \
   -v /path/to/your/project:/workspace/project \
   ghcr.io/libzonda/claudecodeui-docker:latest
 ```
@@ -90,15 +113,23 @@ services:
       HOST: 0.0.0.0
       SERVER_PORT: 3001
       DATABASE_PATH: /root/.cloudcli/auth.db
+      INSTALL_CLAUDE: "true"
+      INSTALL_CODEX: "true"
+      INSTALL_GEMINI: "false"
+      AUTO_UPDATE_CLI: "false"
     volumes:
       - claudecodeui-cloudcli:/root/.cloudcli
       - claudecodeui-claude:/root/.claude
+      - claudecodeui-codex:/root/.codex
+      - claudecodeui-gemini:/root/.gemini
       - /path/to/your/project:/workspace/project
     restart: unless-stopped
 
 volumes:
   claudecodeui-cloudcli:
   claudecodeui-claude:
+  claudecodeui-codex:
+  claudecodeui-gemini:
 ```
 
 启动命令：

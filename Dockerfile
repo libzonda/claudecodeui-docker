@@ -40,7 +40,7 @@ ENV NODE_ENV=production \
     npm_config_fund=false \
     npm_config_audit=false
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates openssh-client \
+    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=prod-deps /app/package*.json ./
 COPY --from=prod-deps /app/node_modules ./node_modules
@@ -48,5 +48,8 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/dist-server ./dist-server
 COPY --from=build /app/public ./public
 COPY --from=build /app/index.html ./index.html
+COPY scripts/bootstrap-clis.sh /usr/local/bin/bootstrap-clis.sh
+RUN chmod +x /usr/local/bin/bootstrap-clis.sh
 EXPOSE 3001
+ENTRYPOINT ["/usr/local/bin/bootstrap-clis.sh"]
 CMD ["npm", "run", "server"]
