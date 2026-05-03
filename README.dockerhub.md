@@ -20,7 +20,7 @@ Important runtime variables:
 - `INSTALL_CODEX=true` — install OpenAI Codex CLI at container startup
 - `INSTALL_CURSOR=true` — install Cursor CLI at container startup using the official installer
 - `INSTALL_GEMINI=true` — install Gemini CLI at container startup
-- `AUTO_UPDATE_CLI=true` — force reinstall/update enabled CLIs on every startup
+- `AUTO_UPDATE_CLI=true` — force reinstall/update enabled CLIs on every startup; default `false` skips update checks when a CLI is already installed
 
 ## Volume mounts
 

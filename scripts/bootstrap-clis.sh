@@ -12,8 +12,6 @@ CODEX_VERSION="${CODEX_VERSION:-latest}"
 CURSOR_VERSION="${CURSOR_VERSION:-latest}"
 GEMINI_VERSION="${GEMINI_VERSION:-latest}"
 
-BOOTSTRAP_STATE_DIR="${BOOTSTRAP_STATE_DIR:-/var/lib/claudecodeui-bootstrap}"
-mkdir -p "$BOOTSTRAP_STATE_DIR"
 export PATH="/root/.local/bin:/root/bin:$PATH"
 export HTTP_PROXY="${HTTP_PROXY:-}"
 export HTTPS_PROXY="${HTTPS_PROXY:-}"
@@ -44,26 +42,11 @@ version_suffix() {
 }
 
 should_run() {
-  name="$1"
-  version="$2"
-  state_file="$BOOTSTRAP_STATE_DIR/$name.version"
-
   if is_true "$AUTO_UPDATE_CLI"; then
     return 0
   fi
 
-  if [ ! -f "$state_file" ]; then
-    return 0
-  fi
-
-  saved_version=$(cat "$state_file" 2>/dev/null || true)
-  [ "$saved_version" != "$version" ]
-}
-
-mark_done() {
-  name="$1"
-  version="$2"
-  printf '%s' "$version" > "$BOOTSTRAP_STATE_DIR/$name.version"
+  return 1
 }
 
 install_codex() {
@@ -74,7 +57,6 @@ install_codex() {
   fi
   log "installing codex via npm: $package_spec"
   npm install -g "$package_spec"
-  mark_done codex "$CODEX_VERSION"
 }
 
 install_gemini() {
@@ -85,7 +67,6 @@ install_gemini() {
   fi
   log "installing gemini via npm: $package_spec"
   npm install -g "$package_spec"
-  mark_done gemini "$GEMINI_VERSION"
 }
 
 install_claude() {
@@ -105,7 +86,6 @@ install_claude() {
   else
     curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_VERSION"
   fi
-  mark_done claude "$CLAUDE_VERSION"
 }
 
 install_cursor() {
@@ -124,8 +104,6 @@ install_cursor() {
   if command -v agent >/dev/null 2>&1 && ! command -v cursor-agent >/dev/null 2>&1; then
     ln -sf "$(command -v agent)" /usr/local/bin/cursor-agent
   fi
-
-  mark_done cursor "$CURSOR_VERSION"
 }
 
 if is_true "$INSTALL_CLAUDE"; then

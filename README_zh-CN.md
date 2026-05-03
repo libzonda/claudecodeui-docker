@@ -33,12 +33,11 @@
 - `INSTALL_CODEX=true`：容器启动时安装 OpenAI Codex CLI
 - `INSTALL_CURSOR=true`：容器启动时使用官方安装方式安装 Cursor CLI
 - `INSTALL_GEMINI=true`：容器启动时安装 Gemini CLI
-- `AUTO_UPDATE_CLI=true`：每次启动都强制更新已启用的 CLI
+- `AUTO_UPDATE_CLI=true`：每次启动都强制更新已启用的 CLI；默认 `false` 时如果 CLI 已安装则不会检查更新
 - `CLAUDE_VERSION`：Claude 版本或 channel，默认 `latest`
 - `CODEX_VERSION`：Codex npm 版本，默认 `latest`
 - `CURSOR_VERSION`：为 Cursor 预留，当前仍安装最新版本
 - `GEMINI_VERSION`：Gemini npm 版本，默认 `latest`
-- `BOOTSTRAP_STATE_DIR`：安装状态目录，默认 `/var/lib/claudecodeui-bootstrap`
 
 ## 目录挂载
 
