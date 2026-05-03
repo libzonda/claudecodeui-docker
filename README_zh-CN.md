@@ -29,7 +29,7 @@
 
 可选的 provider CLI 自举变量：
 
-- `INSTALL_CLAUDE=true`：容器启动时安装 Claude Code CLI
+- `INSTALL_CLAUDE=true`：容器启动时通过官方 native 安装器安装 Claude Code CLI
 - `INSTALL_CODEX=true`：容器启动时安装 OpenAI Codex CLI
 - `INSTALL_CURSOR=true`：容器启动时使用官方安装方式安装 Cursor CLI
 - `INSTALL_GEMINI=true`：容器启动时安装 Gemini CLI

@@ -16,7 +16,7 @@ Important runtime variables:
 - `SERVER_PORT` — backend/UI port, default `3001`
 - `HOST` — bind address, default `0.0.0.0`
 - `DATABASE_PATH` — auth database path inside container, default `/root/.cloudcli/auth.db`
-- `INSTALL_CLAUDE=true` — install Claude Code CLI at container startup
+- `INSTALL_CLAUDE=true` — install Claude Code CLI at container startup via the official native installer
 - `INSTALL_CODEX=true` — install OpenAI Codex CLI at container startup
 - `INSTALL_CURSOR=true` — install Cursor CLI at container startup using the official installer
 - `INSTALL_GEMINI=true` — install Gemini CLI at container startup

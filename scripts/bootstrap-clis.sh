@@ -15,6 +15,12 @@ GEMINI_VERSION="${GEMINI_VERSION:-latest}"
 BOOTSTRAP_STATE_DIR="${BOOTSTRAP_STATE_DIR:-/var/lib/claudecodeui-bootstrap}"
 mkdir -p "$BOOTSTRAP_STATE_DIR"
 export PATH="/root/.local/bin:/root/bin:$PATH"
+export HTTP_PROXY="${HTTP_PROXY:-}"
+export HTTPS_PROXY="${HTTPS_PROXY:-}"
+export NO_PROXY="${NO_PROXY:-}"
+export http_proxy="${http_proxy:-}"
+export https_proxy="${https_proxy:-}"
+export no_proxy="${no_proxy:-}"
 
 log() {
   printf '%s\n' "[bootstrap-clis] $*"
@@ -88,24 +94,17 @@ install_claude() {
     return
   fi
 
-  if ! command -v apt-get >/dev/null 2>&1; then
-    log "apt-get is required to install claude-code"
+  if ! command -v bash >/dev/null 2>&1; then
+    log "bash is required to install claude"
     exit 1
   fi
 
-  log "installing claude-code via native package manager"
-  apt-get update
-  apt-get install -y --no-install-recommends curl ca-certificates gnupg
-  install -d -m 0755 /etc/apt/keyrings
-  curl -fsSL https://cli.claude.com/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/claude-code.gpg
-  printf 'deb [signed-by=/etc/apt/keyrings/claude-code.gpg] https://cli.claude.com/apt stable main\n' > /etc/apt/sources.list.d/claude-code.list
-  apt-get update
+  log "installing claude via official native installer"
   if [ "$CLAUDE_VERSION" = "latest" ]; then
-    apt-get install -y --no-install-recommends claude-code
+    curl -fsSL https://claude.ai/install.sh | bash
   else
-    apt-get install -y --no-install-recommends "claude-code=$CLAUDE_VERSION"
+    curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_VERSION"
   fi
-  rm -rf /var/lib/apt/lists/*
   mark_done claude "$CLAUDE_VERSION"
 }
 
