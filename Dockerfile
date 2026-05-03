@@ -1,18 +1,16 @@
 # syntax=docker/dockerfile:1.7
 
 ARG NODE_VERSION=22
-ARG CLAUDECODEUI_REPO=https://github.com/siteboon/claudecodeui.git
-ARG CLAUDECODEUI_REF=main
+ARG CLAUDECODEUI_SOURCE_URL=https://github.com/siteboon/claudecodeui/archive/refs/heads/main.tar.gz
 
 FROM node:${NODE_VERSION}-bookworm AS build
-ARG CLAUDECODEUI_REPO
-ARG CLAUDECODEUI_REF
+ARG CLAUDECODEUI_SOURCE_URL
 WORKDIR /app
 ENV HUSKY=0
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates python3 make g++ pkg-config \
+    && apt-get install -y --no-install-recommends curl ca-certificates python3 make g++ pkg-config tar \
     && rm -rf /var/lib/apt/lists/*
-RUN git clone --depth 1 --branch "${CLAUDECODEUI_REF}" "${CLAUDECODEUI_REPO}" .
+RUN curl -fsSL "$CLAUDECODEUI_SOURCE_URL" | tar -xz --strip-components=1 -C /app
 RUN npm install
 RUN npm run build && npm prune --omit=dev
 

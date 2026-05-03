@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   pull_request:
   workflow_dispatch:
     inputs:
@@ -13,16 +11,13 @@ on:
         description: 'Optional custom image name, e.g. ghcr.io/owner/claudecodeui'
         required: false
         type: string
-      upstream_ref:
-        description: 'Upstream claudecodeui ref to build, default main'
-        required: false
-        default: 'main'
-        type: string
+  schedule:
+    - cron: '17 3 * * *'
 
 env:
   REGISTRY: ghcr.io
   DEFAULT_IMAGE_NAME: ${{ github.repository }}
-  UPSTREAM_REPO: https://github.com/siteboon/claudecodeui.git
+  UPSTREAM_REPO: siteboon/claudecodeui
 
 jobs:
   docker:
@@ -33,6 +28,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve latest upstream release
+        id: upstream
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const [owner, repo] = process.env.UPSTREAM_REPO.split('/');
+            const release = await github.rest.repos.getLatestRelease({ owner, repo });
+            core.setOutput('tag', release.data.tag_name);
+            core.setOutput('tarball_url', release.data.tarball_url);
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -58,28 +63,31 @@ jobs:
           fi
           echo "name=${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve upstream ref
-        id: upstream
+      - name: Check whether release image already exists
+        id: release_check
         run: |
-          REF="${{ inputs.upstream_ref }}"
-          if [ -z "$REF" ]; then
-            REF="main"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          if docker buildx imagetools inspect "${{ steps.image.outputs.name }}:${{ steps.upstream.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Extract Docker metadata
+        if: steps.release_check.outputs.exists != 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=ref,event=pr
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha
+            type=raw,value=${{ steps.upstream.outputs.tag }}
+            type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }}
 
       - name: Build smoke test image
+        if: steps.release_check.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -88,12 +96,12 @@ jobs:
           load: true
           tags: local/claudecodeui:test
           build-args: |
-            CLAUDECODEUI_REPO=${{ env.UPSTREAM_REPO }}
-            CLAUDECODEUI_REF=${{ steps.upstream.outputs.ref }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            CLAUDECODEUI_SOURCE_URL=${{ steps.upstream.outputs.tarball_url }}
+          cache-from: type=gha,scope=smoke
+          cache-to: type=gha,mode=max,scope=smoke
 
       - name: Run smoke test
+        if: steps.release_check.outputs.exists != 'true'
         run: |
           set -e
           cleanup() {
@@ -111,6 +119,7 @@ jobs:
           exit 1
 
       - name: Build and push
+        if: steps.release_check.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -120,7 +129,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            CLAUDECODEUI_REPO=${{ env.UPSTREAM_REPO }}
-            CLAUDECODEUI_REF=${{ steps.upstream.outputs.ref }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            CLAUDECODEUI_SOURCE_URL=${{ steps.upstream.outputs.tarball_url }}
+          cache-from: type=gha,scope=release
+          cache-to: type=gha,mode=max,scope=release
+
+      - name: Skip because release already exists
+        if: steps.release_check.outputs.exists == 'true'
+        run: echo "Image ${{ steps.image.outputs.name }}:${{ steps.upstream.outputs.tag }} already exists, skipping build and push."
