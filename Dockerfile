@@ -28,7 +28,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ pkg-config \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=source /app/ ./
-RUN npm ci --omit=dev --omit=optional
+RUN npm ci --omit=dev --omit=optional --ignore-scripts
+RUN npm rebuild bcrypt better-sqlite3 node-pty
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 WORKDIR /app
