@@ -4,7 +4,7 @@
 
 这是一个为 [`siteboon/claudecodeui`](https://github.com/siteboon/claudecodeui) 构建 Docker 镜像的包装仓库。
 
-它会基于上游最新 release 的源码包构建镜像，执行一次 smoke test，然后发布带版本号和 `latest` 的镜像。
+它会通过 npm 全局安装 `@cloudcli-ai/cloudcli`，并在镜像构建阶段预装所有支持的 provider CLI。运行时可按需更新 CloudCLI 和 provider CLI，然后通过 `docker-entrypoint.sh` 启动 CloudCLI，并发布带版本号和 `latest` 的镜像。
 
 ## 镜像地址
 
@@ -19,25 +19,20 @@
 
 - `docker.io/libzonda/claudecodeui-docker:latest`
 
-## 环境变量
+## 配置
 
 运行时重点变量：
 
 - `SERVER_PORT`：Web UI / 后端端口，默认 `3001`
 - `HOST`：监听地址，默认 `0.0.0.0`
 - `DATABASE_PATH`：容器内认证数据库路径，默认 `/root/.cloudcli/auth.db`
+- `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`：运行时代理设置，会透传给 provider CLI
 
-可选的 provider CLI 自举变量：
+运行时更新变量：
 
-- `INSTALL_CLAUDE=true`：容器启动时通过官方 native 安装器安装 Claude Code CLI
-- `INSTALL_CODEX=true`：容器启动时安装 OpenAI Codex CLI
-- `INSTALL_CURSOR=true`：容器启动时使用官方安装方式安装 Cursor CLI
-- `INSTALL_GEMINI=true`：容器启动时安装 Gemini CLI
-- `AUTO_UPDATE_CLI=true`：每次启动都强制更新已启用的 CLI；默认 `false` 时如果 CLI 已安装则不会检查更新
-- `CLAUDE_VERSION`：Claude 版本或 channel，默认 `latest`
-- `CODEX_VERSION`：Codex npm 版本，默认 `latest`
-- `CURSOR_VERSION`：为 Cursor 预留，当前仍安装最新版本
-- `GEMINI_VERSION`：Gemini npm 版本，默认 `latest`
+- `AUTO_UPDATE_CLOUDCLI=true`：容器启动时更新 `@cloudcli-ai/cloudcli`；默认 `false`
+- `AUTO_UPDATE_CLI=true`：容器启动时更新 provider CLI；默认 `false`
+- `NPM_REGISTRY`：运行时更新 CloudCLI、Codex、Gemini 时使用的 npm 镜像站地址
 
 ## 目录挂载
 
@@ -59,6 +54,12 @@
 
 - `-v /path/to/your/project:/workspace/project`
 
+## 构建
+
+```bash
+docker build -t claudecodeui:latest .
+```
+
 ## Docker 命令行方式
 
 使用 Docker Hub：
@@ -70,11 +71,10 @@ docker run -d \
   -e HOST=0.0.0.0 \
   -e SERVER_PORT=3001 \
   -e DATABASE_PATH=/root/.cloudcli/auth.db \
-  -e INSTALL_CLAUDE=true \
-  -e INSTALL_CODEX=true \
   -v claudecodeui-cloudcli:/root/.cloudcli \
   -v claudecodeui-claude:/root/.claude \
   -v claudecodeui-codex:/root/.codex \
+  -v claudecodeui-gemini:/root/.gemini \
   -v /path/to/your/project:/workspace/project \
   docker.io/libzonda/claudecodeui-docker:latest
 ```
@@ -88,10 +88,9 @@ docker run -d \
   -e HOST=0.0.0.0 \
   -e SERVER_PORT=3001 \
   -e DATABASE_PATH=/root/.cloudcli/auth.db \
-  -e INSTALL_CLAUDE=true \
-  -e INSTALL_GEMINI=true \
   -v claudecodeui-cloudcli:/root/.cloudcli \
   -v claudecodeui-claude:/root/.claude \
+  -v claudecodeui-codex:/root/.codex \
   -v claudecodeui-gemini:/root/.gemini \
   -v /path/to/your/project:/workspace/project \
   ghcr.io/libzonda/claudecodeui-docker:latest
@@ -112,10 +111,6 @@ services:
       HOST: 0.0.0.0
       SERVER_PORT: 3001
       DATABASE_PATH: /root/.cloudcli/auth.db
-      INSTALL_CLAUDE: "true"
-      INSTALL_CODEX: "true"
-      INSTALL_GEMINI: "false"
-      AUTO_UPDATE_CLI: "false"
     volumes:
       - claudecodeui-cloudcli:/root/.cloudcli
       - claudecodeui-claude:/root/.claude

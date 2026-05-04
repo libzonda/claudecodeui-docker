@@ -2,25 +2,27 @@
 
 Docker image packaging for [`siteboon/claudecodeui`](https://github.com/siteboon/claudecodeui).
 
-This image is built from the latest upstream release source tarball, smoke-tested, and published with both a version tag and `latest`.
+This image installs `@cloudcli-ai/cloudcli` globally from npm and preinstalls all supported provider CLIs at build time. At runtime it can optionally update CloudCLI and provider CLIs, then launches CloudCLI through `docker-entrypoint.sh`. It is published with both a version tag and `latest`.
 
 ## Image
 
 - `docker.io/libzonda/claudecodeui-docker:latest`
 - `docker.io/libzonda/claudecodeui-docker:<upstream-release-tag>`
 
-## Environment variables
+## Configuration
 
 Important runtime variables:
 
 - `SERVER_PORT` — backend/UI port, default `3001`
 - `HOST` — bind address, default `0.0.0.0`
 - `DATABASE_PATH` — auth database path inside container, default `/root/.cloudcli/auth.db`
-- `INSTALL_CLAUDE=true` — install Claude Code CLI at container startup via the official native installer
-- `INSTALL_CODEX=true` — install OpenAI Codex CLI at container startup
-- `INSTALL_CURSOR=true` — install Cursor CLI at container startup using the official installer
-- `INSTALL_GEMINI=true` — install Gemini CLI at container startup
-- `AUTO_UPDATE_CLI=true` — force reinstall/update enabled CLIs on every startup; default `false` skips update checks when a CLI is already installed
+- `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` — proxy settings passed through to provider CLIs at runtime
+
+Runtime update variables:
+
+- `AUTO_UPDATE_CLOUDCLI=true` — update `@cloudcli-ai/cloudcli` on container startup; default `false`
+- `AUTO_UPDATE_CLI=true` — update provider CLIs on container startup; default `false`
+- `NPM_REGISTRY` — npm mirror/registry URL used only during runtime updates for CloudCLI, Codex, and Gemini
 
 ## Volume mounts
 
@@ -39,6 +41,12 @@ Recommended mounts:
 - `-v claudecodeui-gemini:/root/.gemini`
 - `-v /path/to/your/project:/workspace/project`
 
+## Build
+
+```bash
+docker build -t claudecodeui:latest .
+```
+
 ## Docker CLI
 
 ```bash
@@ -48,11 +56,13 @@ docker run -d \
   -e HOST=0.0.0.0 \
   -e SERVER_PORT=3001 \
   -e DATABASE_PATH=/root/.cloudcli/auth.db \
-  -e INSTALL_CLAUDE=true \
-  -e INSTALL_CODEX=true \
+  -e AUTO_UPDATE_CLOUDCLI=false \
+  -e AUTO_UPDATE_CLI=false \
+  -e NPM_REGISTRY=https://registry.npmmirror.com \
   -v claudecodeui-cloudcli:/root/.cloudcli \
   -v claudecodeui-claude:/root/.claude \
   -v claudecodeui-codex:/root/.codex \
+  -v claudecodeui-gemini:/root/.gemini \
   -v /path/to/your/project:/workspace/project \
   docker.io/libzonda/claudecodeui-docker:latest
 ```
@@ -72,9 +82,6 @@ services:
       HOST: 0.0.0.0
       SERVER_PORT: 3001
       DATABASE_PATH: /root/.cloudcli/auth.db
-      INSTALL_CLAUDE: "true"
-      INSTALL_CODEX: "true"
-      AUTO_UPDATE_CLI: "false"
     volumes:
       - claudecodeui-cloudcli:/root/.cloudcli
       - claudecodeui-claude:/root/.claude
