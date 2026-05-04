@@ -13,10 +13,11 @@ ENV NODE_ENV=production \
     npm_config_audit=false
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash \
+    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @cloudcli-ai/cloudcli \
+    && npm install -g task-master-ai \
     && npm install -g @openai/codex \
     && npm install -g @google/gemini-cli \
     && curl -fsSL https://claude.ai/install.sh | bash \
