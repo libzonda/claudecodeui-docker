@@ -3,15 +3,17 @@
 FROM node:24-bookworm AS terminal-plugin-build
 WORKDIR /tmp/web-terminal
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt/lists \
+    apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates git python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --depth 1 https://github.com/cloudcli-ai/cloudcli-plugin-terminal.git /tmp/web-terminal \
+RUN --mount=type=cache,target=/root/.npm \
+    git clone --depth 1 https://github.com/cloudcli-ai/cloudcli-plugin-terminal.git /tmp/web-terminal \
     && npm install --include=dev \
     && npm run build \
-    && npm prune --omit=dev \
-    && rm -rf .git src tsconfig.json README.md
+    && npm prune --omit=dev
 
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
@@ -25,11 +27,14 @@ ENV NODE_ENV=production \
     npm_config_fund=false \
     npm_config_audit=false
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt/lists \
+    apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @cloudcli-ai/cloudcli \
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g @cloudcli-ai/cloudcli \
     && npm install -g task-master-ai \
     && npm install -g @openai/codex \
     && npm install -g @google/gemini-cli \
@@ -40,7 +45,6 @@ RUN npm install -g @cloudcli-ai/cloudcli \
 
 COPY --from=terminal-plugin-build /tmp/web-terminal/manifest.json /root/.claude-code-ui/plugins/web-terminal/
 COPY --from=terminal-plugin-build /tmp/web-terminal/icon.svg /root/.claude-code-ui/plugins/web-terminal/
-COPY --from=terminal-plugin-build /tmp/web-terminal/package.json /root/.claude-code-ui/plugins/web-terminal/
 COPY --from=terminal-plugin-build /tmp/web-terminal/dist /root/.claude-code-ui/plugins/web-terminal/dist
 COPY --from=terminal-plugin-build /tmp/web-terminal/node_modules /root/.claude-code-ui/plugins/web-terminal/node_modules
 

@@ -77,6 +77,7 @@ docker run -d \
   -v claudecodeui-claude:/root/.claude \
   -v claudecodeui-codex:/root/.codex \
   -v claudecodeui-gemini:/root/.gemini \
+  -v claudecodeui-plugins:/root/.claude-code-ui \
   -v /path/to/your/project:/workspace/project \
   docker.io/libzonda/claudecodeui-docker:latest
 ```
@@ -94,6 +95,7 @@ docker run -d \
   -v claudecodeui-claude:/root/.claude \
   -v claudecodeui-codex:/root/.codex \
   -v claudecodeui-gemini:/root/.gemini \
+  -v claudecodeui-plugins:/root/.claude-code-ui \
   -v /path/to/your/project:/workspace/project \
   ghcr.io/libzonda/claudecodeui-docker:latest
 ```

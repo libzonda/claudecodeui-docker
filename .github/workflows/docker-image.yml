@@ -19,18 +19,19 @@ env:
   UPSTREAM_REPO: siteboon/claudecodeui
 
 jobs:
-  docker:
+  prepare:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    outputs:
+      tag: ${{ steps.upstream.outputs.tag }}
+      ghcr: ${{ steps.image.outputs.ghcr }}
+      dockerhub: ${{ steps.image.outputs.dockerhub }}
+      dockerhub_enabled: ${{ steps.image.outputs.dockerhub_enabled }}
+      all_images: ${{ steps.image.outputs.all_images }}
+      exists: ${{ steps.release_check.outputs.exists }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
       - name: Resolve latest upstream release
         id: upstream
         uses: actions/github-script@v8
@@ -39,28 +40,9 @@ jobs:
             const [owner, repo] = process.env.UPSTREAM_REPO.split('/');
             const release = await github.rest.repos.getLatestRelease({ owner, repo });
             core.setOutput('tag', release.data.tag_name);
-            core.setOutput('tarball_url', release.data.tarball_url);
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
-        uses: docker/login-action@v4
-        with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Resolve image names
         id: image
@@ -115,18 +97,18 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Extract Docker metadata
-        if: steps.release_check.outputs.exists != 'true'
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ steps.image.outputs.all_images }}
-          tags: |
-            type=raw,value=${{ steps.upstream.outputs.tag }}
-            type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }}
+  smoke-test:
+    needs: prepare
+    if: needs.prepare.outputs.exists != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Build smoke test image
-        if: steps.release_check.outputs.exists != 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -134,13 +116,10 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: local/claudecodeui:test
-          build-args: |
-            CLAUDECODEUI_SOURCE_URL=${{ steps.upstream.outputs.tarball_url }}
-          cache-from: type=gha,scope=smoke
-          cache-to: type=gha,mode=max,scope=smoke
+          cache-from: type=gha,scope=image-build-amd64
+          cache-to: type=gha,mode=max,scope=image-build-amd64
 
       - name: Run smoke test
-        if: steps.release_check.outputs.exists != 'true'
         run: |
           set -e
           cleanup() {
@@ -157,29 +136,120 @@ jobs:
           docker logs claudecodeui-smoke
           exit 1
 
-      - name: Build and push
-        if: steps.release_check.outputs.exists != 'true'
+  build-platform:
+    needs: [prepare, smoke-test]
+    if: needs.prepare.outputs.exists != 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            suffix: amd64
+            needs_qemu: false
+          - platform: linux/arm64
+            suffix: arm64
+            needs_qemu: true
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        if: matrix.needs_qemu
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: needs.prepare.outputs.dockerhub_enabled == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Resolve platform tags
+        id: tags
+        run: |
+          GHCR_TAGS="${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-${{ matrix.suffix }},${{ needs.prepare.outputs.ghcr }}:latest-${{ matrix.suffix }}"
+          if [ "${{ needs.prepare.outputs.dockerhub_enabled }}" = "true" ]; then
+            ALL_TAGS="$GHCR_TAGS,${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-${{ matrix.suffix }},${{ needs.prepare.outputs.dockerhub }}:latest-${{ matrix.suffix }}"
+          else
+            ALL_TAGS="$GHCR_TAGS"
+          fi
+          echo "tags=$ALL_TAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push platform image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            CLAUDECODEUI_SOURCE_URL=${{ steps.upstream.outputs.tarball_url }}
-          cache-from: type=gha,scope=release
-          cache-to: type=gha,mode=max,scope=release
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha,scope=image-build-${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=image-build-${{ matrix.suffix }}
+
+  merge-manifests:
+    needs: [prepare, build-platform]
+    if: needs.prepare.outputs.exists != 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: needs.prepare.outputs.dockerhub_enabled == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Create GHCR multi-arch manifest
+        run: |
+          docker buildx imagetools create \
+            -t "${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}" \
+            -t "${{ needs.prepare.outputs.ghcr }}:latest" \
+            "${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-amd64" \
+            "${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-arm64"
+
+      - name: Create Docker Hub multi-arch manifest
+        if: needs.prepare.outputs.dockerhub_enabled == 'true'
+        run: |
+          docker buildx imagetools create \
+            -t "${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}" \
+            -t "${{ needs.prepare.outputs.dockerhub }}:latest" \
+            "${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-amd64" \
+            "${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-arm64"
 
       - name: Verify Docker Hub tags
-        if: steps.release_check.outputs.exists != 'true' && steps.image.outputs.dockerhub_enabled == 'true'
+        if: needs.prepare.outputs.dockerhub_enabled == 'true'
         run: |
           set -e
-          for tag in "${{ steps.upstream.outputs.tag }}" latest; do
+          for tag in "${{ needs.prepare.outputs.tag }}" latest; do
             found=false
             for i in $(seq 1 12); do
-              if docker buildx imagetools inspect "docker.io/${{ steps.image.outputs.dockerhub }}:${tag}" >/dev/null 2>&1; then
+              if docker buildx imagetools inspect "docker.io/${{ needs.prepare.outputs.dockerhub }}:${tag}" >/dev/null 2>&1; then
                 found=true
                 break
               fi
@@ -191,16 +261,24 @@ jobs:
             fi
           done
 
+      - name: Checkout
+        if: needs.prepare.outputs.dockerhub_enabled == 'true'
+        uses: actions/checkout@v5
+
       - name: Update Docker Hub README
-        if: github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        if: needs.prepare.outputs.dockerhub_enabled == 'true'
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-          repository: ${{ steps.image.outputs.dockerhub }}
+          repository: ${{ needs.prepare.outputs.dockerhub }}
           readme-filepath: ./README.dockerhub.md
           short-description: Docker image packaging for siteboon/claudecodeui
 
+  skip-release:
+    needs: prepare
+    if: needs.prepare.outputs.exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
       - name: Skip because release already exists
-        if: steps.release_check.outputs.exists == 'true'
-        run: echo "Image ${{ steps.image.outputs.ghcr }}:${{ steps.upstream.outputs.tag }} already exists, skipping build and push."
+        run: echo "Image ${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }} already exists, skipping build and push."
