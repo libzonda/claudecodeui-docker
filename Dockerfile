@@ -1,5 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
+FROM node:24-bookworm AS terminal-plugin-build
+WORKDIR /tmp/web-terminal
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates git python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 https://github.com/cloudcli-ai/cloudcli-plugin-terminal.git /tmp/web-terminal \
+    && npm install --include=dev \
+    && npm run build \
+    && npm prune --omit=dev \
+    && rm -rf .git src tsconfig.json README.md
+
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 
@@ -13,7 +26,7 @@ ENV NODE_ENV=production \
     npm_config_audit=false
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash python3 make g++ \
+    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @cloudcli-ai/cloudcli \
@@ -23,9 +36,13 @@ RUN npm install -g @cloudcli-ai/cloudcli \
     && curl -fsSL https://claude.ai/install.sh | bash \
     && curl -fsSL https://cursor.com/install | bash \
     && if command -v agent >/dev/null 2>&1 && ! command -v cursor-agent >/dev/null 2>&1; then ln -sf "$(command -v agent)" /usr/local/bin/cursor-agent; fi \
-    && mkdir -p /root/.claude-code-ui/plugins \
-    && git clone --depth 1 https://github.com/cloudcli-ai/cloudcli-plugin-terminal.git /root/.claude-code-ui/plugins/web-terminal \
-    && bash -lc 'cd /root/.claude-code-ui/plugins/web-terminal && npm install --include=dev && npm run build'
+    && mkdir -p /root/.claude-code-ui/plugins/web-terminal
+
+COPY --from=terminal-plugin-build /tmp/web-terminal/manifest.json /root/.claude-code-ui/plugins/web-terminal/
+COPY --from=terminal-plugin-build /tmp/web-terminal/icon.svg /root/.claude-code-ui/plugins/web-terminal/
+COPY --from=terminal-plugin-build /tmp/web-terminal/package.json /root/.claude-code-ui/plugins/web-terminal/
+COPY --from=terminal-plugin-build /tmp/web-terminal/dist /root/.claude-code-ui/plugins/web-terminal/dist
+COPY --from=terminal-plugin-build /tmp/web-terminal/node_modules /root/.claude-code-ui/plugins/web-terminal/node_modules
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
