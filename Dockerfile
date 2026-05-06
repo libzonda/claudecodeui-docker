@@ -13,7 +13,7 @@ ENV NODE_ENV=production \
     npm_config_audit=false
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash python3 \
+    && apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @cloudcli-ai/cloudcli \
