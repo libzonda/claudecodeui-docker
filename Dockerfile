@@ -25,7 +25,7 @@ RUN npm install -g @cloudcli-ai/cloudcli \
     && if command -v agent >/dev/null 2>&1 && ! command -v cursor-agent >/dev/null 2>&1; then ln -sf "$(command -v agent)" /usr/local/bin/cursor-agent; fi \
     && mkdir -p /root/.claude-code-ui/plugins \
     && git clone --depth 1 https://github.com/cloudcli-ai/cloudcli-plugin-terminal.git /root/.claude-code-ui/plugins/web-terminal \
-    && bash -lc 'cd /root/.claude-code-ui/plugins/web-terminal && npm install && npm run build'
+    && bash -lc 'cd /root/.claude-code-ui/plugins/web-terminal && npm install --include=dev && npm run build'
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
