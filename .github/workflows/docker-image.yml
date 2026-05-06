@@ -14,7 +14,6 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   REGISTRY: ghcr.io
-  DEFAULT_IMAGE_NAME: ${{ github.repository }}
   DOCKERHUB_IMAGE: libzonda/claudecodeui-docker
   UPSTREAM_REPO: siteboon/claudecodeui
 
@@ -50,7 +49,7 @@ jobs:
           if [ -n "${{ inputs.image_name }}" ]; then
             GHCR_IMAGE="${{ inputs.image_name }}"
           else
-            GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.DEFAULT_IMAGE_NAME }}"
+            GHCR_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}"
           fi
           DOCKERHUB_ENABLED=false
           if [ -n "${{ env.DOCKERHUB_USERNAME }}" ] && [ -n "${{ env.DOCKERHUB_TOKEN }}" ]; then
