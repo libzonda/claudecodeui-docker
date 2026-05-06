@@ -180,9 +180,15 @@ jobs:
       - name: Resolve platform tags
         id: tags
         run: |
-          GHCR_TAGS="${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-${{ matrix.suffix }},${{ needs.prepare.outputs.ghcr }}:latest-${{ matrix.suffix }}"
+          if [ -n "${{ inputs.image_name }}" ]; then
+            GHCR_IMAGE="${{ inputs.image_name }}"
+          else
+            GHCR_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}"
+          fi
+          GHCR_IMAGE="${GHCR_IMAGE,,}"
+          GHCR_TAGS="$GHCR_IMAGE:${{ needs.prepare.outputs.tag }}-${{ matrix.suffix }},$GHCR_IMAGE:latest-${{ matrix.suffix }}"
           if [ "${{ needs.prepare.outputs.dockerhub_enabled }}" = "true" ]; then
-            ALL_TAGS="$GHCR_TAGS,${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-${{ matrix.suffix }},${{ needs.prepare.outputs.dockerhub }}:latest-${{ matrix.suffix }}"
+            ALL_TAGS="$GHCR_TAGS,${{ env.DOCKERHUB_IMAGE }}:${{ needs.prepare.outputs.tag }}-${{ matrix.suffix }},${{ env.DOCKERHUB_IMAGE }}:latest-${{ matrix.suffix }}"
           else
             ALL_TAGS="$GHCR_TAGS"
           fi
