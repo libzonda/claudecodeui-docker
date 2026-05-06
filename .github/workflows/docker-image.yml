@@ -11,6 +11,10 @@ on:
   schedule:
     - cron: '17 */2 * * *'
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   REGISTRY: ghcr.io
