@@ -35,13 +35,18 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g @cloudcli-ai/cloudcli \
-    && npm install -g task-master-ai \
-    && npm install -g @openai/codex \
-    && npm install -g @google/gemini-cli \
-    && curl -fsSL https://claude.ai/install.sh | bash \
-    && curl -fsSL https://cursor.com/install | bash \
-    && if command -v agent >/dev/null 2>&1 && ! command -v cursor-agent >/dev/null 2>&1; then ln -sf "$(command -v agent)" /usr/local/bin/cursor-agent; fi \
-    && mkdir -p /root/.claude-code-ui/plugins/web-terminal
+    && npm install -g task-master-ai
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g @openai/codex \
+    && npm install -g @google/gemini-cli
+
+RUN curl -fsSL https://claude.ai/install.sh | bash
+
+RUN curl -fsSL https://cursor.com/install | bash \
+    && if command -v agent >/dev/null 2>&1 && ! command -v cursor-agent >/dev/null 2>&1; then ln -sf "$(command -v agent)" /usr/local/bin/cursor-agent; fi
+
+RUN mkdir -p /root/.claude-code-ui/plugins/web-terminal
 
 COPY --from=terminal-plugin-build /tmp/web-terminal/manifest.json /root/.claude-code-ui/plugins/web-terminal/
 COPY --from=terminal-plugin-build /tmp/web-terminal/icon.svg /root/.claude-code-ui/plugins/web-terminal/
