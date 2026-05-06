@@ -220,6 +220,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Resolve image names
+        id: image
+        run: |
+          if [ -n "${{ inputs.image_name }}" ]; then
+            GHCR_IMAGE="${{ inputs.image_name }}"
+          else
+            GHCR_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}"
+          fi
+          echo "ghcr=${GHCR_IMAGE,,}" >> "$GITHUB_OUTPUT"
+          echo "dockerhub=${{ env.DOCKERHUB_IMAGE }}" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
@@ -237,19 +248,19 @@ jobs:
       - name: Create GHCR multi-arch manifest
         run: |
           docker buildx imagetools create \
-            -t "${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}" \
-            -t "${{ needs.prepare.outputs.ghcr }}:latest" \
-            "${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-amd64" \
-            "${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-arm64"
+            -t "${{ steps.image.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}" \
+            -t "${{ steps.image.outputs.ghcr }}:latest" \
+            "${{ steps.image.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-amd64" \
+            "${{ steps.image.outputs.ghcr }}:${{ needs.prepare.outputs.tag }}-arm64"
 
       - name: Create Docker Hub multi-arch manifest
         if: needs.prepare.outputs.dockerhub_enabled == 'true'
         run: |
           docker buildx imagetools create \
-            -t "${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}" \
-            -t "${{ needs.prepare.outputs.dockerhub }}:latest" \
-            "${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-amd64" \
-            "${{ needs.prepare.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-arm64"
+            -t "${{ steps.image.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}" \
+            -t "${{ steps.image.outputs.dockerhub }}:latest" \
+            "${{ steps.image.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-amd64" \
+            "${{ steps.image.outputs.dockerhub }}:${{ needs.prepare.outputs.tag }}-arm64"
 
       - name: Verify Docker Hub tags
         if: needs.prepare.outputs.dockerhub_enabled == 'true'
@@ -258,7 +269,7 @@ jobs:
           for tag in "${{ needs.prepare.outputs.tag }}" latest; do
             found=false
             for i in $(seq 1 12); do
-              if docker buildx imagetools inspect "docker.io/${{ needs.prepare.outputs.dockerhub }}:${tag}" >/dev/null 2>&1; then
+              if docker buildx imagetools inspect "docker.io/${{ steps.image.outputs.dockerhub }}:${tag}" >/dev/null 2>&1; then
                 found=true
                 break
               fi
@@ -280,7 +291,7 @@ jobs:
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-          repository: ${{ needs.prepare.outputs.dockerhub }}
+          repository: ${{ steps.image.outputs.dockerhub }}
           readme-filepath: ./README.dockerhub.md
           short-description: Docker image packaging for siteboon/claudecodeui
 
@@ -289,5 +300,15 @@ jobs:
     if: needs.prepare.outputs.exists == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve image name
+        id: image
+        run: |
+          if [ -n "${{ inputs.image_name }}" ]; then
+            GHCR_IMAGE="${{ inputs.image_name }}"
+          else
+            GHCR_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}"
+          fi
+          echo "ghcr=${GHCR_IMAGE,,}" >> "$GITHUB_OUTPUT"
+
       - name: Skip because release already exists
-        run: echo "Image ${{ needs.prepare.outputs.ghcr }}:${{ needs.prepare.outputs.tag }} already exists, skipping build and push."
+        run: echo "Image ${{ steps.image.outputs.ghcr }}:${{ needs.prepare.outputs.tag }} already exists, skipping build and push."
