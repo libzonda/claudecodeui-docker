@@ -4,7 +4,7 @@
 
 这是一个为 [`siteboon/claudecodeui`](https://github.com/siteboon/claudecodeui) 构建 Docker 镜像的包装仓库。
 
-它会通过 npm 全局安装 `@cloudcli-ai/cloudcli`，并在镜像构建阶段预装所有支持的 provider CLI。运行时可按需更新 CloudCLI 和 provider CLI，然后通过 `docker-entrypoint.sh` 启动 CloudCLI，并发布带版本号和 `latest` 的镜像。
+它会通过 npm 全局安装 `@cloudcli-ai/cloudcli`，并在镜像构建阶段预装所有支持的 provider CLI，同时内置安装 `cloudcli-plugin-terminal` 插件。运行时可按需更新 CloudCLI 和 provider CLI，然后通过 `docker-entrypoint.sh` 启动 CloudCLI，并发布带版本号和 `latest` 的镜像。
 
 ## 镜像地址
 
@@ -42,6 +42,7 @@
 - `/root/.claude`：保存 Claude Code 的会话、配置、凭据、MCP 配置
 - `/root/.codex`：保存 Codex 认证与会话数据
 - `/root/.gemini`：保存 Gemini 认证与配置
+- `/root/.claude-code-ui`：保存已安装插件、插件状态和插件配置
 
 推荐挂载：
 
@@ -49,6 +50,7 @@
 - `-v claudecodeui-claude:/root/.claude`
 - `-v claudecodeui-codex:/root/.codex`
 - `-v claudecodeui-gemini:/root/.gemini`
+- `-v claudecodeui-plugins:/root/.claude-code-ui`
 
 如果希望在 UI 中访问你的项目目录，也建议挂载工作区：
 
@@ -116,6 +118,7 @@ services:
       - claudecodeui-claude:/root/.claude
       - claudecodeui-codex:/root/.codex
       - claudecodeui-gemini:/root/.gemini
+      - claudecodeui-plugins:/root/.claude-code-ui
       - /path/to/your/project:/workspace/project
     restart: unless-stopped
 
@@ -124,6 +127,7 @@ volumes:
   claudecodeui-claude:
   claudecodeui-codex:
   claudecodeui-gemini:
+  claudecodeui-plugins:
 ```
 
 启动命令：

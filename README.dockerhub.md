@@ -32,6 +32,7 @@ Important persistent paths:
 - `/root/.claude` — Claude Code sessions, settings, credentials, MCP config
 - `/root/.codex` — Codex auth and session data
 - `/root/.gemini` — Gemini auth and config
+- `/root/.claude-code-ui` — installed plugins, plugin state, and plugin config
 
 Recommended mounts:
 
@@ -39,6 +40,7 @@ Recommended mounts:
 - `-v claudecodeui-claude:/root/.claude`
 - `-v claudecodeui-codex:/root/.codex`
 - `-v claudecodeui-gemini:/root/.gemini`
+- `-v claudecodeui-plugins:/root/.claude-code-ui`
 - `-v /path/to/your/project:/workspace/project`
 
 ## Build
@@ -63,6 +65,7 @@ docker run -d \
   -v claudecodeui-claude:/root/.claude \
   -v claudecodeui-codex:/root/.codex \
   -v claudecodeui-gemini:/root/.gemini \
+  -v claudecodeui-plugins:/root/.claude-code-ui \
   -v /path/to/your/project:/workspace/project \
   docker.io/libzonda/claudecodeui-docker:latest
 ```
@@ -87,6 +90,7 @@ services:
       - claudecodeui-claude:/root/.claude
       - claudecodeui-codex:/root/.codex
       - claudecodeui-gemini:/root/.gemini
+      - claudecodeui-plugins:/root/.claude-code-ui
       - /path/to/your/project:/workspace/project
     restart: unless-stopped
 
@@ -95,6 +99,7 @@ volumes:
   claudecodeui-claude:
   claudecodeui-codex:
   claudecodeui-gemini:
+  claudecodeui-plugins:
 ```
 
 Start with:
